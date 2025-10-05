@@ -1,0 +1,14 @@
+[Unit]
+Description=The nutsbot Discord Bot
+After=network.target
+
+[Service]
+ExecStart=__EXEC_START__
+WorkingDirectory=__ROOT_RUN_DIR__
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+User=__USER__
+
+[Install]
+WantedBy=multi-user.target
