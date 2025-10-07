@@ -51,6 +51,11 @@ async def on_message(message):
     return
 
 
+@tree.command(
+    name="nuts", description="NUTS!"
+)
+async def _nuts(interaction: discord.Interaction):
+    await interaction.response.send_message(f"<:nuts:1424932626023841893>")
 
 @tree.command(
     name="version", description="bot version"
