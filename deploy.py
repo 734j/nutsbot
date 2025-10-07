@@ -101,7 +101,7 @@ def install_bot(conf_path: str):
     data = FILEinstalled.read()
     FILEinstalled.close()
     data = data.replace("__YOUR_TOKEN__", token_string)
-    data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[1])
+    data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0])
     data = data.replace("__VERSION__", get_current_commit_hash())
     FILEinstalled = open(root_run_dir_path+"/"+g_bot_src, "w")
     FILEinstalled.write(data)
@@ -136,10 +136,8 @@ def test_bot(conf_path: str):
     token_string = token_string.strip('\n')
     
     directory_paths = [
-        os.path.expanduser(root_run_dir_path+"/bannedwords"),
-        os.path.expanduser(root_run_dir_path+"/misc"),
-        os.path.expanduser(root_run_dir_path+"/old-versions"),
-        os.path.expanduser(root_run_dir_path+"/pitroles")
+        os.path.expanduser(root_run_dir_path+"/database"),
+        os.path.expanduser(root_run_dir_path+"/old-versions")
     ]
 
     for path in directory_paths:
@@ -148,14 +146,12 @@ def test_bot(conf_path: str):
             return False
     
     shutil.copyfile(g_bot_src, root_run_dir_path_test+"/"+g_bot_src_test)
-    shutil.copytree("misc", root_run_dir_path+"/misc", dirs_exist_ok=True)
 
     FILEinstalled = open(root_run_dir_path_test+"/"+g_bot_src_test, "r")
     data = FILEinstalled.read()
     FILEinstalled.close()
     data = data.replace("__YOUR_TOKEN__", token_string)
-    data = data.replace("__YOUR_LOG_PATH__", directory_paths[3])
-    data = data.replace("__YOUR_BAD_WORDS_PATH__", directory_paths[0])
+    data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0])
     data = data.replace("__VERSION__", get_current_commit_hash())
     FILEinstalled = open(root_run_dir_path_test+"/"+g_bot_src_test, "w")
     FILEinstalled.write(data)
@@ -181,10 +177,8 @@ def update_bot(conf_path: str):
     token_string = token_string.strip('\n')
     
     directory_paths = [
-        os.path.expanduser(root_run_dir_path+"/bannedwords"),
-        os.path.expanduser(root_run_dir_path+"/misc"),
-        os.path.expanduser(root_run_dir_path+"/old-versions"),
-        os.path.expanduser(root_run_dir_path+"/pitroles")
+        os.path.expanduser(root_run_dir_path+"/database"),
+        os.path.expanduser(root_run_dir_path+"/old-versions")
     ]
 
     for path in directory_paths:
@@ -195,19 +189,18 @@ def update_bot(conf_path: str):
     if not os.path.isfile(root_run_dir_path+"/bot.py"):
         print(f"bot.py does not exist, this is not an update operation. Please use --install.")
         return False
-    
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    os.rename(root_run_dir_path+"/"+g_bot_src, directory_paths[2]+"/bot"+timestamp+".py")
-    shutil.copyfile(g_bot_src, root_run_dir_path+"/"+g_bot_src)
-    shutil.copytree("misc", root_run_dir_path+"/misc", dirs_exist_ok=True)
 
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    os.rename(root_run_dir_path+"/"+g_bot_src, directory_paths[1]+"/bot"+timestamp+".py")
+    shutil.copyfile(g_bot_src, root_run_dir_path+"/"+g_bot_src)
+    
     FILEinstalled = open(root_run_dir_path+"/"+g_bot_src, "r")
     data = FILEinstalled.read()
     FILEinstalled.close()
     data = data.replace("__YOUR_TOKEN__", token_string)
-    data = data.replace("__YOUR_LOG_PATH__", directory_paths[3])
-    data = data.replace("__YOUR_BAD_WORDS_PATH__", directory_paths[0])
+    data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0])
     data = data.replace("__VERSION__", get_current_commit_hash())
+    
     FILEinstalled = open(root_run_dir_path+"/"+g_bot_src, "w")
     FILEinstalled.write(data)
     FILEinstalled.close()
