@@ -1,7 +1,6 @@
-SwagBot2 is the Official bot of the 69SwagBalls420 Discord server.
+NutsBot is a discord bot.
 
 Required environment, dependencies and packages:
 Linux Distribution with SystemD
 python 3
 discordpy
-python-cowsay
