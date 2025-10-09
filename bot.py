@@ -1,5 +1,5 @@
 from discord import app_commands
-from discord.utils import get  # New import
+from discord.utils import get
 from discord.ext import commands
 from random import randint
 import os
@@ -8,9 +8,9 @@ import random
 import time
 from typing import Literal
 from discord import AllowedMentions
-
 from io import StringIO
 import sys
+import sqlite3
 
 CWD_PATH = (
     os.getcwd()
@@ -37,6 +37,11 @@ async def on_ready():
     print(SYS_DATABASE_DIR_PATH)
     print(CWD_PATH)
     print(f"On version: {COMMIT}")
+    with open("guilds.txt", "w", encoding="utf-8") as file:
+        for guild in bot.guilds:
+            line = f"\n{guild.name} (ID: {guild.id})\nMember Count: {guild.member_count}\n"
+            file.write(line)
+            print(f"Wrote to file: {line.strip()}")
 
 
 @bot.event
