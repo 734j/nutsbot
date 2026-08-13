@@ -4,3 +4,25 @@ Required environment, dependencies and packages:
 Linux Distribution with SystemD
 python 3
 discordpy
+
+
+Config file explained:
+
+{
+	"token_file_path": "/path/to/your/token/file",
+	"run_dir_path": "/path/to/your/nutsbot_run_directory"
+	"sqlite3_db_path": "/path/to/your/sqlite_database_file.db"
+	"sqlite3_no_db_path": "true"
+}
+
+token_file_path
+This is the path to a FILE where you put the bot's token.
+
+run_dir_path
+The path to a DIRECTORY, the working directory of the bot, where the bot script is stored and where other data for the bot is stored.
+
+sqlite3_db_path
+Path to the database FILE.
+
+sqlite3_no_db_path
+If you set this to 'true' then the 'sqlite3_db_path' will be ignored. The database file will be created inside the working directory of the bot specified by 'run_dir_path'

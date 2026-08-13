@@ -1,4 +1,6 @@
 {
 	"token_file_path": "/path/to/your/token/file",
-	"run_dir_path": "/path/to/your/nutsbot_run_directory"
+	"run_dir_path": "/path/to/your/nutsbot_run_directory",
+	"sqlite3_db_path": "/path/to/your/sqlite_database_file.db",
+	"sqlite3_no_db_path": "false"
 }
