@@ -68,6 +68,15 @@ def initialize_db_tables(db_connection: sqlite3.Connection):
     );
     """)
 
+    db_cursor.execute("""
+    CREATE TRIGGER IF NOT EXISTS add_default_reaction_on_guild_insert
+    AFTER INSERT ON guilds
+    BEGIN
+        INSERT OR IGNORE INTO reactions (guild_id, trigger_phrase, response_phrase)
+        VALUES (NEW.guild_id, 'nuts', '<:nuts:1424932626023841893>');
+    END;
+    """)
+    
     db_connection.commit()
     print_debug("initialize_db_tables: Database initialized.")
     
@@ -76,9 +85,11 @@ def create_db_sqlite3(path: str) -> bool:
     db_connection = sqlite3.connect(path);
     if is_db_empty(db_connection) == True:
         initialize_db_tables(db_connection)
+        db_connection.close()
         print_debug("create_db_sqlite3: Database initialized.")
         return True
     else:
+        db_connection.close()
         print_debug("create_db_sqlite3: Nothing done. Database already exists.")
         return False
     
@@ -223,47 +234,7 @@ def install_bot(conf_path: str):
             print("There was an issue installing the SystemD service.")
     elif False:
         print("SystemD service not installed.")
-        
-    
-def test_bot(conf_path: str):
-
-    print("Deploying testfile...")
-    if not is_config_valid(conf_path):
-        print("Invalid config")
-        return
-
-    print("OK config.")
-
-    config_data = read_and_format_config(conf_path)
-    token_string = config_data.get("token_str")
-    root_run_dir_path = config_data.get("root_run_dir_path")
-    sqlite3_db_path = config_data.get("sqlite3_db_path")
-    sqlite3_no_db_path = config_data.get("sqlite3_no_db_path")
-
-    directory_paths = [
-        os.path.expanduser(root_run_dir_path+"/database"),
-        os.path.expanduser(root_run_dir_path+"/old-versions")
-    ]
-
-    for path in directory_paths:
-        if not os.path.isdir(path):            
-            print(f"Directory {path} does not exist. Please use --install.")
-            return False
-    
-    shutil.copyfile(g_bot_src, root_run_dir_path_test+"/"+g_bot_src_test)
-
-    FILEinstalled = open(root_run_dir_path_test+"/"+g_bot_src_test, "r")
-    data = FILEinstalled.read()
-    FILEinstalled.close()
-    data = data.replace("__YOUR_TOKEN__", token_string)
-    data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0])
-    data = data.replace("__VERSION__", get_current_commit_hash())
-    FILEinstalled = open(root_run_dir_path_test+"/"+g_bot_src_test, "w")
-    FILEinstalled.write(data)
-    FILEinstalled.close()
-    print(f"Updated to commit: {get_current_commit_hash()}\nBot moved to ./test for testing.")
-    if ask_yes_no("Would you like to stop the service to test now?") is True:
-        stop_systemd_service()
+            
 
 def update_bot(conf_path: str):
 
@@ -326,7 +297,6 @@ parser = argparse.ArgumentParser(description="Bot tool")
 parser.add_argument("config_file", type=str, nargs='?', help="Path to the config file (required for most operations)")
 
 group = parser.add_mutually_exclusive_group(required=True)
-group.add_argument('--test', action='store_true', help="Run tests")
 group.add_argument('--install', action='store_true', help="Run installation")
 group.add_argument('--update', action='store_true', help="Run update")
 group.add_argument('--usage', action='store_true', help="A more in depth explanation of the options.")
@@ -344,7 +314,6 @@ if args.startservice:
 
 if args.usage:
     print(f"{sys.argv[0]}\n")
-    print("     --test        Will install the bot in to a separate testing runtime directory. For your testing purposes.")
     print("     --install     Will install the bot for the first time on your system in the way it's intended to run. Assumes you are on linux with SystemD.")
     print("     --update      Will update already installed bot. Works almost just like --install, just that it wont ask to install the service.")
     print("     --usage       Display this message.\n")
@@ -355,9 +324,8 @@ if not args.config_file:
 
 conf_path = args.config_file
 
-if args.test:
-    test_bot(conf_path)
-elif args.install:
+
+if args.install:
     install_bot(conf_path)
 elif args.update:
     update_bot(conf_path)
