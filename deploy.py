@@ -156,6 +156,7 @@ def read_and_format_config(conf_path: str) -> dict[str, str]:
 def install_bot(conf_path: str):
 
     print("Installing...")
+    print("Validating config structure.")
     if not is_config_valid(conf_path):
         print("Invalid config")
         return
@@ -206,7 +207,7 @@ def install_bot(conf_path: str):
     if sqlite3_no_db_path == "false":
         data = data.replace("__YOUR_DATABASE_PATH__", sqlite3_db_path)
     else:
-        data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0]+"/"+os.path.basename(sqlite3_db_path))
+        data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0]+"/"+"database.db")
 
     data = data.replace("__VERSION__", get_current_commit_hash())
     FILEinstalled = open(root_run_dir_path+"/"+g_bot_src, "w")
@@ -232,15 +233,13 @@ def test_bot(conf_path: str):
         return
 
     print("OK config.")
-    FILEjson = open(conf_path, "r")
-    config_json = FILEjson.read()
-    config = json.loads(config_json)
-    FILEtoken = open(config[g_token_file_path])
-    root_run_dir_path_test = os.path.expanduser(g_run_dir_path_test) # Path to root of the run dir
-    root_run_dir_path = os.path.expanduser(config[g_run_dir_path])
-    token_string = FILEtoken.read() # String of token
-    token_string = token_string.strip('\n')
-    
+
+    config_data = read_and_format_config(conf_path)
+    token_string = config_data.get("token_str")
+    root_run_dir_path = config_data.get("root_run_dir_path")
+    sqlite3_db_path = config_data.get("sqlite3_db_path")
+    sqlite3_no_db_path = config_data.get("sqlite3_no_db_path")
+
     directory_paths = [
         os.path.expanduser(root_run_dir_path+"/database"),
         os.path.expanduser(root_run_dir_path+"/old-versions")
@@ -269,18 +268,18 @@ def test_bot(conf_path: str):
 def update_bot(conf_path: str):
 
     print("Deploying update...")
+    print("Validating config structure.")
     if not is_config_valid(conf_path):
         print("Invalid config")
         return
 
     print("OK config.")
-    FILEjson = open(conf_path, "r")
-    config_json = FILEjson.read()
-    config = json.loads(config_json)
-    FILEtoken = open(config[g_token_file_path])
-    root_run_dir_path = os.path.expanduser(config[g_run_dir_path])
-    token_string = FILEtoken.read() # String of token
-    token_string = token_string.strip('\n')
+
+    config_data = read_and_format_config(conf_path)
+    token_string = config_data.get("token_str")
+    root_run_dir_path = config_data.get("root_run_dir_path")
+    sqlite3_db_path = config_data.get("sqlite3_db_path")
+    sqlite3_no_db_path = config_data.get("sqlite3_no_db_path")
     
     directory_paths = [
         os.path.expanduser(root_run_dir_path+"/database"),
@@ -296,6 +295,7 @@ def update_bot(conf_path: str):
         print(f"bot.py does not exist, this is not an update operation. Please use --install.")
         return False
 
+    
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     os.rename(root_run_dir_path+"/"+g_bot_src, directory_paths[1]+"/bot"+timestamp+".py")
     shutil.copyfile(g_bot_src, root_run_dir_path+"/"+g_bot_src)
@@ -304,7 +304,13 @@ def update_bot(conf_path: str):
     data = FILEinstalled.read()
     FILEinstalled.close()
     data = data.replace("__YOUR_TOKEN__", token_string)
-    data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0])
+    
+    if sqlite3_no_db_path == "false":
+        data = data.replace("__YOUR_DATABASE_PATH__", sqlite3_db_path)
+    else:
+        data = data.replace("__YOUR_DATABASE_PATH__", directory_paths[0]+"/"+"database.db")
+
+
     data = data.replace("__VERSION__", get_current_commit_hash())
     
     FILEinstalled = open(root_run_dir_path+"/"+g_bot_src, "w")
