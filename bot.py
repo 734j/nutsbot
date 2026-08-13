@@ -25,6 +25,7 @@ COMMIT = '__VERSION__'
 TOKEN = '__YOUR_TOKEN__'
 SYS_DATABASE_DIR_PATH = "__YOUR_DATABASE_PATH__"
 
+
 @tree.error
 async def on_app_command_error(
     interaction: discord.Interaction, error: app_commands.AppCommandError
@@ -114,7 +115,6 @@ async def _nuts(interaction: discord.Interaction):
     await interaction.response.send_message("<:nuts:1424932626023841893>")
 
 @tree.command(name="add-reaction", description="Add a reaction. You can have 50 reactions in total.")
-@app_commands.checks.has_permissions(administrator=True)
 async def _add_reaction(interaction: discord.Interaction, trigger: str, response: str):
     if not interaction.guild_id:
         await interaction.response.send_message(
@@ -122,6 +122,13 @@ async def _add_reaction(interaction: discord.Interaction, trigger: str, response
         )
         return
 
+    if not interaction.permissions.administrator:
+        await interaction.response.send_message(
+            "You need **Administrator** permissions to use this command!",
+            ephemeral=True,
+        )
+        return
+    
     guild_id = str(interaction.guild_id)
 
     async with bot.db.execute(
