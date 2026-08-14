@@ -25,6 +25,28 @@ COMMIT = '__VERSION__'
 TOKEN = '__YOUR_TOKEN__'
 SYS_DATABASE_DIR_PATH = "__YOUR_DATABASE_PATH__"
 
+class Paginator_Reactions(discord.ui.View):
+    def __init__(self, pages: list[str]):
+        super().__init__(timeout=120) # View times out after 2 minutes of inactivity
+        self.pages = pages
+        self.current_page = 0
+        self.update_buttons()
+
+    def update_buttons(self):
+        self.children[0].disabled = self.current_page == 0
+        self.children[1].disabled = self.current_page == len(self.pages) - 1 # Next
+
+    @discord.ui.button(label="Previous", style=discord.ButtonStyle.blurple)
+    async def previous_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page -= 1
+        self.update_buttons()
+        await interaction.response.edit_message(content=self.pages[self.current_page], view=self)
+
+    @discord.ui.button(label="Next", style=discord.ButtonStyle.blurple)
+    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.current_page += 1
+        self.update_buttons()
+        await interaction.response.edit_message(content=self.pages[self.current_page], view=self)
 
 @tree.error
 async def on_app_command_error(
@@ -165,7 +187,55 @@ async def _add_reaction(interaction: discord.Interaction, trigger: str, response
             ephemeral=True,
         )
 
+@tree.command(name="list-reactions", description="List out all reactions added for your server.")
+async def list_reactions(interaction: discord.Interaction):
+    if not interaction.guild_id:
+        await interaction.response.send_message(
+            "This command can only be used in a server!", ephemeral=True
+        )
+        return
 
+    if not interaction.permissions.administrator:
+        await interaction.response.send_message(
+            "You need **Administrator** permissions to use this command!",
+            ephemeral=True,
+        )
+        return
+    
+    guild_id = str(interaction.guild_id)
+
+    async with bot.db.execute("SELECT COUNT(*) FROM reactions WHERE guild_id = ?", (guild_id,)) as cursor:
+        row = await cursor.fetchone()
+        current_count = row[0] if row else 0
+        
+    
+    sql = """
+    SELECT trigger_phrase, response_phrase FROM reactions WHERE guild_id = ?
+    """
+
+    async with bot.db.execute(sql, (guild_id,)) as cursor:
+        data = await cursor.fetchall()
+
+    formatted_data = [f"{trigger} ->  {response}" for trigger, response in data]
+    
+    chunk_size = 10
+    pages = []
+    for i in range(0, len(formatted_data), chunk_size):
+
+        page_content = "\n".join(formatted_data[i:i + chunk_size])
+        page_content += f"\n\n*Page {len(pages) + 1}*" 
+        pages.append(page_content)
+
+    if len(pages) == 1:
+        await interaction.response.send_message(content=pages[0])
+        return
+
+    view = Paginator_Reactions(pages)
+    await interaction.response.send_message(content=pages[0], view=view)
+    await interaction.response.send_message(f"{formatted_data}")
+
+    
+        
 @tree.command(name="version", description="bot version")
 async def ver(interaction: discord.Interaction):
     await interaction.response.send_message(f"Version: {COMMIT}")
