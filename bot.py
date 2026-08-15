@@ -137,7 +137,7 @@ async def _nuts(interaction: discord.Interaction):
     await interaction.response.send_message("<:nuts:1424932626023841893>")
 
 @tree.command(name="add-reaction", description="Add a reaction. You can have 50 reactions in total.")
-async def _add_reaction(interaction: discord.Interaction, trigger: str, response: str):
+async def _add_reaction(interaction: discord.Interaction, trigger: discord.app_commands.Range[str, 2, 500], response: discord.app_commands.Range[str, 2, 500]):
     if not interaction.guild_id:
         await interaction.response.send_message(
             "This command can only be used in a server!", ephemeral=True
@@ -151,6 +151,16 @@ async def _add_reaction(interaction: discord.Interaction, trigger: str, response
         )
         return
     
+    _trigger = trigger.strip()
+    _response = response.strip()
+    if not _trigger or not _response:
+        await interaction.response.send("Your input was invalid in some way, try again.", ephemeral=True)
+        return
+
+    if len(_trigger.encode("utf-8")) > 1500 or len(_response.encode("utf-8")) > 1500:
+        await interaction.response.send("Your input is too long", ephemeral=True)
+        return
+        
     guild_id = str(interaction.guild_id)
 
     async with bot.db.execute(
@@ -172,13 +182,16 @@ async def _add_reaction(interaction: discord.Interaction, trigger: str, response
     """
 
     try:
-        await bot.db.execute(sql, (guild_id, trigger.lower(), response))
+        await bot.db.execute(sql, (guild_id, _trigger.lower(), _response))
         await bot.db.commit()
-        
+
         await interaction.response.send_message(
-            f"**Trigger:** `{trigger.lower()}`\n"
-            f"**Response:** {response}"
+            f"```Trigger: {_trigger.lower()}\nResponse: {_response}```"
         )
+        #await interaction.response.send_message(
+        #    f"**Trigger:** `{_trigger.lower()}`\n"
+        #    f"**Response:** `{_response}`"
+        #)
 
     except aiosqlite.IntegrityError:
         # This triggers if UNIQUE(guild_id, trigger_phrase) is violated
@@ -210,21 +223,21 @@ async def list_reactions(interaction: discord.Interaction):
         
     
     sql = """
-    SELECT trigger_phrase, response_phrase FROM reactions WHERE guild_id = ?
+    SELECT trigger_phrase, response_phrase, id FROM reactions WHERE guild_id = ?
     """
 
     async with bot.db.execute(sql, (guild_id,)) as cursor:
         data = await cursor.fetchall()
 
-    formatted_data = [f"{trigger} ->  {response}" for trigger, response in data]
+    formatted_data = [f"ID: {id_num} {trigger} ->  {response}" for trigger, response, id_num in data]
     
     chunk_size = 10
     pages = []
     for i in range(0, len(formatted_data), chunk_size):
 
         page_content = "\n".join(formatted_data[i:i + chunk_size])
-        page_content += f"\n\n*Page {len(pages) + 1}*" 
-        pages.append(page_content)
+        page_content += f"\n\nPage {len(pages) + 1}" 
+        pages.append(f"```{page_content}```")
 
     if len(pages) == 1:
         await interaction.response.send_message(content=pages[0])
