@@ -76,6 +76,16 @@ def initialize_db_tables(db_connection: sqlite3.Connection):
         VALUES (NEW.guild_id, 'nuts', '<:nuts:1424932626023841893>');
     END;
     """)
+
+    db_cursor.execute("""
+    CREATE TABLE ignored_channels (
+    channel_id TEXT NOT NULL,
+    guild_id TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (guild_id, channel_id),
+    FOREIGN KEY (guild_id) REFERENCES guilds(guild_id) ON DELETE CASCADE
+    );
+    """)
     
     db_connection.commit()
     print_debug("initialize_db_tables: Database initialized.")

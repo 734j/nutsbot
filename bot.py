@@ -102,6 +102,12 @@ async def on_guild_remove(guild: discord.Guild):
     await bot.db.commit()
 
 
+async def _check_if_ignored_channel(guild_id: str, channel: discord.TextChannel) -> bool:
+
+    query = "SELECT 1 FROM ignored_channels WHERE guild_id = ? AND channel_id = ?"
+    async with bot.db.execute(query, (guild_id, str(channel.id))) as cursor:
+        return bool(await cursor.fetchone())
+
 @bot.event
 async def on_message(message):
     if message.author == bot.user:  # bot doesn't reply to itself
@@ -112,7 +118,10 @@ async def on_message(message):
     
     guild_id_str = str(message.guild.id)
     msg_content_lower = message.content.lower()
-
+    channel = message.channel
+    if await _check_if_ignored_channel(guild_id_str, channel) == True:
+        return
+    
     sql = """
     SELECT trigger_phrase, response_phrase
     FROM reactions
@@ -135,6 +144,41 @@ async def on_message(message):
 @tree.command(name="nuts", description="NUTS!")
 async def _nuts(interaction: discord.Interaction):
     await interaction.response.send_message("<:nuts:1424932626023841893>")
+
+
+@tree.command(name="add-ignored-channel", description="Add channels you do not want the bot to speak in.")
+async def _add_ignored_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not interaction.guild_id:
+        await interaction.response.send_message(
+            "This command can only be used in a server!", ephemeral=True
+        )
+        return
+
+    if not interaction.permissions.administrator:
+        await interaction.response.send_message(
+            "You need **Administrator** permissions to use this command!",
+            ephemeral=True,
+        )
+        return
+        
+    guild_id = str(interaction.guild_id)
+    channel_id = str(channel.id)
+
+    if await _check_if_ignored_channel(guild_id, channel) == True:
+        await interaction.response.send_message(f"```Channel with channel ID: {channel.id} is already an ignored channel.```", ephemeral=True)
+        return
+    
+    sql = """
+    INSERT INTO ignored_channels (channel_id, guild_id)
+    VALUES (? , ?);
+    """
+
+    async with bot.db.execute(sql, (channel_id, guild_id)) as cursor:
+        await bot.db.commit()
+        await interaction.response.send_message(f"```Channel with channel ID: {channel.id} has been added to the ignored channels.```")
+
+    
+        
 
 @tree.command(name="add-reaction", description="Add a reaction. You can have 50 reactions in total.")
 async def _add_reaction(interaction: discord.Interaction, trigger: discord.app_commands.Range[str, 1, 500], response: discord.app_commands.Range[str, 1, 500]):
@@ -274,6 +318,7 @@ async def _list_reactions(interaction: discord.Interaction):
     async with bot.db.execute(sql, (guild_id,)) as cursor:
         data = await cursor.fetchall()
 
+    print(f"DEBUG: Retrieved {len(data)} rows from DB -> {data}")
     formatted_data = [f"ID: {id_num} {trigger} ->  {response}" for trigger, response, id_num in data]
     
     chunk_size = 10
@@ -282,7 +327,7 @@ async def _list_reactions(interaction: discord.Interaction):
 
         page_content = "\n".join(formatted_data[i:i + chunk_size])
         page_content += f"\n\nPage {len(pages) + 1}" 
-        pages.append(f"```{page_content}```")
+        pages.append(f"```\n{page_content}```")
 
     if len(pages) == 1:
         await interaction.response.send_message(content=pages[0])
@@ -292,8 +337,91 @@ async def _list_reactions(interaction: discord.Interaction):
     await interaction.response.send_message(content=pages[0], view=view)
     await interaction.response.send_message(f"{formatted_data}")
 
+@tree.command(name="list-ignored-channels", description="List out all ignored channels for your server.")
+async def _list_ignored_channels(interaction: discord.Interaction):
+    if not interaction.guild_id:
+        await interaction.response.send_message(
+            "This command can only be used in a server!", ephemeral=True
+        )
+        return
+
+    if not interaction.permissions.administrator:
+        await interaction.response.send_message(
+            "You need **Administrator** permissions to use this command!",
+            ephemeral=True,
+        )
+        return
     
+    guild_id = str(interaction.guild_id)
+
+    async with bot.db.execute("SELECT COUNT(*) FROM ignored_channels WHERE guild_id = ?", (guild_id,)) as cursor:
+        row = await cursor.fetchone()
+        current_count = row[0] if row else 0
         
+
+    if current_count <= 0:
+        await interaction.response.send_message("```Your server has no ignored channels yet.```", ephemeral=True)
+        return
+    
+    sql = """
+    SELECT channel_id FROM ignored_channels WHERE guild_id = ?
+    """
+
+    async with bot.db.execute(sql, (guild_id,)) as cursor:
+        data = await cursor.fetchall()
+
+
+    formatted_data = [
+        str(row[0]).strip().replace("\r", "").replace("`", "") 
+        for row in data
+    ]
+
+    
+    chunk_size = 10
+    pages = []
+    for i in range(0, len(formatted_data), chunk_size):
+        page_content = "\n".join(formatted_data[i:i + chunk_size])
+        page_content += f"\n\nPage {len(pages) + 1}"
+        pages.append(f"```\n{page_content}```")
+
+    if len(pages) == 1:
+        await interaction.response.send_message(content=pages[0])
+        return
+
+    view = Paginator_Reactions(pages)
+    await interaction.response.send_message(content=pages[0], view=view)
+
+
+@tree.command(name="remove-ignored-channel", description="Remove an ignored channel.")
+async def _remove_ignored_channel(interaction: discord.Interaction, channel: discord.TextChannel):
+    if not interaction.guild_id:
+        await interaction.response.send_message(
+            "This command can only be used in a server!", ephemeral=True
+        )
+        return
+
+    if not interaction.permissions.administrator:
+        await interaction.response.send_message(
+            "You need **Administrator** permissions to use this command!",
+            ephemeral=True,
+        )
+        return
+
+    guild_id = str(interaction.guild_id)
+    if await _check_if_ignored_channel(guild_id, channel) == False:
+        await interaction.response.send_message(f"```This is not an ignored channel```", ephemeral=True)
+        return
+
+
+    sql = """
+    DELETE FROM ignored_channels  WHERE channel_id  = ? AND guild_id = ?
+    """
+
+    async with bot.db.execute(sql, (channel.id, guild_id)) as cursor:
+        await bot.db.commit()
+        await interaction.response.send_message(f"```The channel with ID: {channel.id} has been removed from the ignored list.```")            
+
+    
 @tree.command(name="version", description="bot version")
 async def ver(interaction: discord.Interaction):
     await interaction.response.send_message(f"Version: {COMMIT}")
