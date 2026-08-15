@@ -200,8 +200,53 @@ async def _add_reaction(interaction: discord.Interaction, trigger: discord.app_c
             ephemeral=True,
         )
 
+
+@tree.command(name="remove-reaction", description="Remove a reaction based on it's ID.")
+async def _remove_reaction(interaction: discord.Interaction, reaction_id: discord.app_commands.Range[int, 1]):
+    if not interaction.guild_id:
+        await interaction.response.send_message(
+            "This command can only be used in a server!", ephemeral=True
+        )
+        return
+
+    if not interaction.permissions.administrator:
+        await interaction.response.send_message(
+            "You need **Administrator** permissions to use this command!",
+            ephemeral=True,
+        )
+        return
+    
+        
+    guild_id = str(interaction.guild_id)
+
+    async with bot.db.execute(
+        "SELECT COUNT(*) FROM reactions WHERE guild_id = ?", (guild_id,)
+    ) as cursor:
+        row = await cursor.fetchone()
+        current_count = row[0] if row else 0
+
+    if current_count <=0:
+        await interaction.response.send_message(
+            "Error.",
+            ephemeral=True,
+        )
+        return
+    
+    sql = """
+    DELETE FROM reactions WHERE id = ? AND guild_id = ?
+    """
+
+    async with bot.db.execute(sql, (reaction_id, guild_id)) as cursor:
+        if cursor.rowcount > 0:
+            await bot.db.commit()
+            await interaction.response.send_message(f"```The reaction with ID: {reaction_id} has been removed.```")
+        else:
+            await interaction.response.send_message(f"```There is no reaction with ID: {reaction_id} associated with this server.```")
+            
+
+        
 @tree.command(name="list-reactions", description="List out all reactions added for your server.")
-async def list_reactions(interaction: discord.Interaction):
+async def _list_reactions(interaction: discord.Interaction):
     if not interaction.guild_id:
         await interaction.response.send_message(
             "This command can only be used in a server!", ephemeral=True
