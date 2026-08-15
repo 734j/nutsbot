@@ -137,7 +137,7 @@ async def _nuts(interaction: discord.Interaction):
     await interaction.response.send_message("<:nuts:1424932626023841893>")
 
 @tree.command(name="add-reaction", description="Add a reaction. You can have 50 reactions in total.")
-async def _add_reaction(interaction: discord.Interaction, trigger: discord.app_commands.Range[str, 2, 500], response: discord.app_commands.Range[str, 2, 500]):
+async def _add_reaction(interaction: discord.Interaction, trigger: discord.app_commands.Range[str, 1, 500], response: discord.app_commands.Range[str, 1, 500]):
     if not interaction.guild_id:
         await interaction.response.send_message(
             "This command can only be used in a server!", ephemeral=True
@@ -188,10 +188,6 @@ async def _add_reaction(interaction: discord.Interaction, trigger: discord.app_c
         await interaction.response.send_message(
             f"```Trigger: {_trigger.lower()}\nResponse: {_response}```"
         )
-        #await interaction.response.send_message(
-        #    f"**Trigger:** `{_trigger.lower()}`\n"
-        #    f"**Response:** `{_response}`"
-        #)
 
     except aiosqlite.IntegrityError:
         # This triggers if UNIQUE(guild_id, trigger_phrase) is violated
@@ -227,7 +223,7 @@ async def _remove_reaction(interaction: discord.Interaction, reaction_id: discor
 
     if current_count <=0:
         await interaction.response.send_message(
-            "Error.",
+            "```Your server has no reactions yet.```",
             ephemeral=True,
         )
         return
@@ -241,7 +237,7 @@ async def _remove_reaction(interaction: discord.Interaction, reaction_id: discor
             await bot.db.commit()
             await interaction.response.send_message(f"```The reaction with ID: {reaction_id} has been removed.```")
         else:
-            await interaction.response.send_message(f"```There is no reaction with ID: {reaction_id} associated with this server.```")
+            await interaction.response.send_message(f"```There is no reaction with ID: {reaction_id} associated with this server.```", ephemeral=True)
             
 
         
@@ -266,6 +262,10 @@ async def _list_reactions(interaction: discord.Interaction):
         row = await cursor.fetchone()
         current_count = row[0] if row else 0
         
+
+    if current_count <= 0:
+        await interaction.response.send_message("```Your server has no reactions yet.```", ephemeral=True)
+        return
     
     sql = """
     SELECT trigger_phrase, response_phrase, id FROM reactions WHERE guild_id = ?
