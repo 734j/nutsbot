@@ -126,7 +126,8 @@ async def on_message(message):
     SELECT trigger_phrase, response_phrase
     FROM reactions
     JOIN guilds ON guilds.guild_id = reactions.guild_id
-    WHERE reactions.guild_id = ? AND guilds.bot_is_enabled = 1;
+    WHERE reactions.guild_id = ? AND guilds.bot_is_enabled = 1
+    ORDER BY LENGTH(reactions.trigger_phrase) DESC;
     """
 
     async with bot.db.execute(sql, (guild_id_str,)) as cursor:
@@ -198,11 +199,11 @@ async def _add_reaction(interaction: discord.Interaction, trigger: discord.app_c
     _trigger = trigger.strip()
     _response = response.strip()
     if not _trigger or not _response:
-        await interaction.response.send("Your input was invalid in some way, try again.", ephemeral=True)
+        await interaction.response.send_message("Your input was invalid in some way, try again.", ephemeral=True)
         return
 
     if len(_trigger.encode("utf-8")) > 1500 or len(_response.encode("utf-8")) > 1500:
-        await interaction.response.send("Your input is too long", ephemeral=True)
+        await interaction.response.send_message("Your input is too long", ephemeral=True)
         return
         
     guild_id = str(interaction.guild_id)
@@ -331,11 +332,12 @@ async def _list_reactions(interaction: discord.Interaction):
 
     if len(pages) == 1:
         await interaction.response.send_message(content=pages[0])
+        await interaction.followup.send(f"{formatted_data}")
         return
 
     view = Paginator_Reactions(pages)
     await interaction.response.send_message(content=pages[0], view=view)
-    await interaction.response.send_message(f"{formatted_data}")
+    await interaction.followup.send(f"{formatted_data}")
 
 @tree.command(name="list-ignored-channels", description="List out all ignored channels for your server.")
 async def _list_ignored_channels(interaction: discord.Interaction):
